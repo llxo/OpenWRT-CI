@@ -148,11 +148,16 @@ if [[ "${WRT_CONFIG:-}" == "ZN-M2-WIFI-NO" ]]; then
 		exit 1
 	fi
 
-	# 3) 从 qualcommax 默认包与设备包列表摘除 Wi-Fi、USB 与 offload 模块（防无提示 DEFAULT_* 回拉）
-	WLAN_USB_RE='^(kmod-ath.*|kmod-cfg80211|kmod-mac80211|ath10k-firmware-.*|ath11k-firmware-.*|ipq-wifi-.*|wpad(-.*)?|hostapd(-.*)?|iw|iwinfo|wireless-regdb|kmod-usb.*|kmod-nft-offload)$'
+	# 3) 从 qualcommax 默认包与设备包列表摘除 Wi-Fi、USB、NSS 固件/驱动、automount 及冗余存储工具
+	#    （防止无提示 CONFIG_DEFAULT_* / DEPENDS 反向拉回 kmod-usb-*、kmod-fs-* 与 kmod-nss-wifi-drv）
+	TRIM_PKGS_RE='^(kmod-ath.*|kmod-cfg80211|kmod-mac80211|ath10k-firmware-.*|ath11k-firmware-.*|ipq-wifi-.*|wpad(-.*)?|hostapd(-.*)?|iw|iwinfo|wireless-regdb|kmod-usb.*|kmod-nss-.*|nss-firmware(-.*)?|automount|e2fsprogs|f2fs-tools|losetup|kmod-fs-ext4|kmod-fs-f2fs|kmod-nft-offload)$'
 	for MK in "./target/linux/qualcommax/Makefile" "./target/linux/qualcommax/ipq60xx/target.mk" "./target/linux/qualcommax/image/ipq60xx.mk"; do
 		[ -f "$MK" ] || continue
-		strip_make_pkgs "$MK" '(DEFAULT_PACKAGES([.][A-Za-z0-9_]+)?|DEVICE_PACKAGES)' "$WLAN_USB_RE"
-		echo "Trimmed Wi-Fi/USB default packages in $MK"
+		strip_make_pkgs "$MK" '(DEFAULT_PACKAGES([.][A-Za-z0-9_]+)?|DEVICE_PACKAGES)' "$TRIM_PKGS_RE"
+		if grep -v '^[[:space:]]*#' "$MK" | grep -qE '(^|[[:space:]:=+])(kmod-nss-wifi-drv|nss-firmware(-ipq60xx)?|automount|e2fsprogs|f2fs-tools|losetup|kmod-fs-(ext4|f2fs))([[:space:]\\]|$)'; then
+			echo "!! ZN-M2-WIFI-NO: unexpected trim target still present in $MK" >&2
+			exit 1
+		fi
+		echo "Trimmed Wi-Fi/USB/NSS/automount default packages in $MK"
 	done
 fi
