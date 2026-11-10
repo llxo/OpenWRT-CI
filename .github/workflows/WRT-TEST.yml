@@ -19,6 +19,7 @@ on:
           - IPQ53XX
           - IPQ60XX-WIFI-NO
           - IPQ60XX-WIFI-YES
+          - ZN-M2-WIFI-NO
           - IPQ807X-WIFI-NO
           - IPQ807X-WIFI-YES
           - IPQ95XX
